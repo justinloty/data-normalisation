@@ -1,0 +1,142 @@
+---
+title: "Data Normalisation"
+author: "Justin Lo"
+date: "`28_July_2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This is the dataset needed to be normalised
+
+  '| EmployeeID | SalesPerson | SalesOffice | OfficeNumber | Customer1 | Customer2 | Customer3 |
+   | ------:|:-------------:|:----------:|:------------ |:-------:|:------:|:------:|
+   | 1003   | Mary Smith    |  Chicago   | 312-555-1212 | Ford   | GM |       |
+   | 1004   | John Hunt     |  New York  | 212-555-1212 | Dell   | HP | Apple |
+   | 1005   | Martin Hap    |  Chicago   | 312-555-1212 | Boeing |    |       |'
+```{r}
+library('janitor')
+library('tidyverse')
+
+rmd.string <-
+  '| EmployeeID | SalesPerson | SalesOffice | OfficeNumber | Customer1 | Customer2 | Customer3 |
+   | ------:|:-------------:|:----------:|:------------ |:-------:|:------:|:------:|
+   | 1003   | Mary Smith    |  Chicago   | 312-555-1212 | Ford   | GM |       |
+   | 1004   | John Hunt     |  New York  | 212-555-1212 | Dell   | HP | Apple |
+   | 1005   | Martin Hap    |  Chicago   | 312-555-1212 | Boeing |    |       |'
+
+rmd.table <- read_delim(rmd.string, delim = '|')[-1,2:8]
+#To read the hand-typed dataset and creating a dataframe fo rit
+
+colnames(rmd.table) <- str_squish(colnames(rmd.table))
+
+rmd.table <- 
+  rmd.table %>% 
+  mutate(EmployeeID = as.integer(EmployeeID),
+         across(SalesPerson:Customer3, ~ str_squish(.x)))
+#set employeeID as integer and clear white spaces in columns.
+
+
+rmd.table<- rmd.table %>% 
+  pivot_longer(cols = starts_with('Customer'),
+               values_to = 'Customer') %>% 
+  filter(Customer != '')
+#pivot the table into rectangular shape and only take the value where customer is not blank 
+```
+1NF achieved
+
+```{r}
+employee<- rmd.table %>% 
+  distinct(EmployeeID, SalesPerson, SalesOffice, OfficeNumber)
+
+customer<- rmd.table %>%  
+  select(EmployeeID, Customer)
+#creating employee and customer table 
+```
+Now all data depend on their primary key and that there is no partial dependency, 2NF achieved
+
+```{r}
+office<- employee %>% 
+  select(OfficeNumber, SalesOffice)
+
+employee<- employee %>% 
+  select(EmployeeID, SalesPerson, OfficeNumber)
+#creating pffice and employee table
+```
+New table for offices as the primary key does not fully define SalesOffice(it can also be defined by OfficeNumber)
+Now that there is no transitive partial dependency, 3NF achieved 
+
+Another dataset to be normalised
+
+| Name           | Address    |   Movies Rented   |  Salutation  | Category | Fiction? |
+   |:---------------|:-----------|:------------------|:------------:|----------|----------|
+   | Bob Smith      | 1 Houghton Street  | _Star Wars_, _Fast and Furious 7_ |  Dr. |  Scifi, Action | Yes, Yes|
+   | Pry Ministair  | 10 Downing St  |  _Brexit: Three Years On_   |  Rt Hon.  | Documentary | No |
+   | Joe Bloggs     | 8 Myhatt St.  |  _The Big Short_, _Star Wars_  | Mr. | Documentary, Scifi | No, Yes |
+   
+```{r}
+movie.string<-  '| Name           | Address    |   Movies Rented   |  Salutation  | Category | Fiction? |
+   |:---------------|:-----------|:------------------|:------------:|----------|----------|
+   | Bob Smith      | 1 Houghton Street  | _Star Wars_, _Fast and Furious 7_ |  Dr. |  Scifi, Action | Yes, Yes|
+   | Pry Ministair  | 10 Downing St  |  _Brexit: Three Years On_   |  Rt Hon.  | Documentary | No |
+   | Joe Bloggs     | 8 Myhatt St.  |  _The Big Short_, _Star Wars_  | Mr. | Documentary, Scifi | No, Yes |'
+movie.table<-read_delim(movie.string)[-1,2:7]
+
+movie.table<- movie.table %>% 
+  mutate(across(everything(), ~ str_squish(str_remove_all(.x, '\\_')))) %>% 
+  janitor::clean_names() %>% 
+  separate_rows(c(movies_rented, category, fiction), sep = ',') 
+#clearing white spaces, tidying columns name. Splitting the multiple values in the same cell into different rows
+```
+1NF achieved 
+
+There is partial dependency
+```{r}
+movie.table$userID<-c(001,001,002,003,003)
+movie.table$moviesID<-as.character(c(1,2,3,4,1))
+
+#rearranging columns in movie.table
+movie.table<- movie.table %>% 
+  select(userID, name, address, moviesID,movies_rented, salutation, category, fiction)
+
+#create rental dataset
+rentals<- movie.table %>% 
+  distinct(userID, moviesID)
+
+#create movies dataset
+movies<- movie.table %>% 
+  distinct(moviesID, movies_rented, category, fiction) %>% 
+  mutate(across(everything(), ~ str_squish(.x)))
+movies<-movies[-5,]
+
+#create user dataset 
+user<- movie.table %>% 
+  distinct(userID, name, address, salutation)
+```
+2NF achieved 
+
+As there is transitive dependency between category and fiction in the movie table, we have to make a new table and update the movie table.
+```{r}
+movies$categoryID<-as.character(c(1,2,3,3))
+movies<- movies %>% 
+  select(moviesID,movies_rented,categoryID,category,fiction)
+
+#create category table
+category<- movies %>% 
+  distinct(categoryID,category,fiction)
+  
+#update movies table
+movies<- movies %>% 
+  select(moviesID, movies_rented, categoryID)
+```
+3NF achieved
+
+To save the two tables into csv file
+```{r}
+write.csv(rmd.table, file = 'sales.csv', row.names = FALSE)
+write.csv(movie.table, file = 'movie.csv', row.names = FALSE)
+```
+
+
+   

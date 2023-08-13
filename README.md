@@ -1,2 +1,2 @@
 # justin_personal
-data normalisation 
+Collection of personal projects made by Justin Lo

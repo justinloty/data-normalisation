@@ -1,0 +1,7 @@
+"EmployeeID","SalesPerson","SalesOffice","OfficeNumber","name","Customer"
+1003,"Mary Smith","Chicago","312-555-1212","Customer1","Ford"
+1003,"Mary Smith","Chicago","312-555-1212","Customer2","GM"
+1004,"John Hunt","New York","212-555-1212","Customer1","Dell"
+1004,"John Hunt","New York","212-555-1212","Customer2","HP"
+1004,"John Hunt","New York","212-555-1212","Customer3","Apple"
+1005,"Martin Hap","Chicago","312-555-1212","Customer1","Boeing"
